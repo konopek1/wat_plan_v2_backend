@@ -7,13 +7,13 @@ static INTERVAL: u64 = 8; // co ile godzin odswizane
 
 #[allow(unreachable_code)]
 fn main() {
-    println!("Now listening on localhost:8000");
+    let port = std::env::var("PORT").expect("not port set");
+    println!("{}",String::from("Now listening on localhost:") + &port);
 
     std::thread::spawn(move || loop {
         scrap_wat::fetch_parse_plan().unwrap();
         std::thread::sleep(Duration::from_secs(3600 * INTERVAL));
     });
-    let port = std::env::var("PORT").is_err().to_string();
 
     rouille::start_server(String::from("127.0.0.1:") + &port, move |request| {
         router!(request,
