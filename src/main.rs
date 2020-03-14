@@ -15,7 +15,7 @@ fn main() {
         std::thread::sleep(Duration::from_secs(3600 * INTERVAL));
     });
 
-    rouille::start_server(String::from("127.0.0.1:") + &port, move |request| {
+    rouille::start_server(String::from("0.0.0.0:") + &port, move |request| {
         router!(request,
             (GET) (/) => {
                 // If the request's URL is `/`, we jump here.
