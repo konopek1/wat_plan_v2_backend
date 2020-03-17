@@ -1,13 +1,12 @@
 use reqwest;
-use reqwest::header;
 use scraper::{Html, Selector};
 use std::prelude::v1::Vec;
 use tokio::fs::File;
 use tokio::prelude::*;
 
+const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(1);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
-// const GROUPS: [&str; 3] = ["WCY18KY2S1", "WCY18KY3S1", "WCY18KY4S1"];
-const GROUPS: [&str; 1] = ["WCY18KY2S1"];
+// const GROUPS: [&str; 6] = ["WCY18KY2S1","WCY18IY2S1","WCY18IY1S1","WCY18IY3S1","WCY18IY4S1","WCY18IY5S1"];
 const VMAX: usize = 22;
 const HMAX: usize = 49;
 
@@ -31,27 +30,32 @@ impl Krotka {
 #[tokio::main]
 pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let client: reqwest::Client = build_client().unwrap();
+
     let sid = get_sid(&client, URL).await?;
     println!("sid:{}", sid);
+
     login(&client, &sid, "michalkonopka", "Qwertqwert120").await?;
+    let plain_site = get_plan_site(&sid, "").await?.unwrap();
+    let groups = extract_groups(plain_site);
 
     let mut tasks: std::vec::Vec<tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>> =
         Vec::new(); // no tak czy nie xDD
 
-    for group in &GROUPS {
+    for group in groups {
         let sido = sid.clone();
-
+        std::thread::sleep(COOLDOWN);
         let task = tokio::spawn(async move {
-            let plain_html = get_plan_site(sido, &group)
+            let plain_html = get_plan_site(&sido, &group)
                 .await
                 .expect("ERROR GET PLAN SITE");
 
             let mut day_offset: usize = 0;
             let mut hours: usize = 0;
-            let titles = extract_tds_titles(plain_html).await;
+            let titles = extract_tds_titles(plain_html.unwrap()).await;
             let titles = trasnsponse(titles);
 
-            let mut file = File::create(&group).await?;
+
+            let mut file = File::create(&group[..]).await?;
             let mut vec_json: Vec<Krotka> = Vec::new();
             for title in titles {
                 if hours == 7 {
@@ -62,7 +66,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
                 let krotka = Krotka::new(day_offset, hours, title.to_owned());
                 vec_json.push(krotka);
             }
-            file.write_all(serde_json::to_string_pretty(&vec_json).unwrap().as_bytes())
+            file.write_all(serde_json::to_string(&vec_json).unwrap().as_bytes())
                 .await?;
 
             Ok(())
@@ -83,14 +87,28 @@ async fn extract_tds_titles(html: String) -> Vec<String> {
     let html = Html::parse_fragment(&html[..]);
 
     for td in html.select(&selector) {
-        let td_title = td.value().attr("title").unwrap_or(" _OKNO_ ");
-        let td_title = String::from(td_title);
-        result.push(td_title);
+        let td_title = td.value().attr("title").unwrap_or(" ");
+        result.push(td_title.to_owned());
+    }
+    result
+}
+
+fn extract_groups(html: String) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+    let selector = Selector::parse(r#"a[class=aMenu]"#).unwrap();
+    let html = Html::parse_fragment(&html[..]);
+
+    for a in html.select(&selector) {
+        let group = a.text().next().unwrap();
+        result.push(group.to_owned());
     }
     result
 }
 
 fn trasnsponse(matrix: Vec<String>) -> Vec<String> {
+    if matrix.len() == 0 {
+        return matrix;
+    }
     let mut new_matrix: Vec<String> = Vec::new();
     let mut i: usize = 0;
     let mut offset: usize = 0;
@@ -154,14 +172,6 @@ fn get_headers() -> reqwest::header::HeaderMap {
     headers2
 }
 
-fn build_blocking_client() -> Result<reqwest::blocking::Client, reqwest::Error> {
-    let client = reqwest::blocking::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()?;
-
-    Ok(client)
-}
-
 fn build_client() -> Result<reqwest::Client, reqwest::Error> {
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
@@ -200,7 +210,7 @@ async fn login(
 }
 
 //https://s1.wcy.wat.edu.pl/ed1/logged_inc.php?mid=328&iid=20192&exv=WCY18KY2S1&pos=0&rdo=1&t=6801700&sid=
-async fn get_plan_site(sid: String, group: &str) -> Result<String, reqwest::Error> {
+async fn get_plan_site(sid: &String, group: &str) -> Result<Option<String>, reqwest::Error> {
     let client = build_client().unwrap();
 
     let mut url: String = String::from(
@@ -214,5 +224,5 @@ async fn get_plan_site(sid: String, group: &str) -> Result<String, reqwest::Erro
     println!("{}", url);
 
     let post = client.post(&url[..]).send().await?.text().await?;
-    Ok(post)
+    Ok(Some(post))
 }
