@@ -10,7 +10,7 @@ fn main() {
     let port = std::env::var("PORT").unwrap_or("8888".to_owned());
 
     std::thread::spawn(move || loop {
-        // scrap_wat::fetch_parse_plan().unwrap();
+        scrap_wat::fetch_parse_plan().unwrap();
         std::thread::sleep(Duration::from_secs(3600 * INTERVAL));
     });
 
