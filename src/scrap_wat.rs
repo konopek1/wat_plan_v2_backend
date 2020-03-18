@@ -6,7 +6,6 @@ use tokio::prelude::*;
 
 const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(1);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
-// const GROUPS: [&str; 6] = ["WCY18KY2S1","WCY18IY2S1","WCY18IY1S1","WCY18IY3S1","WCY18IY4S1","WCY18IY5S1"];
 const VMAX: usize = 22;
 const HMAX: usize = 49;
 
@@ -26,7 +25,7 @@ impl Krotka {
         };
     }
 }
-
+type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
 #[tokio::main]
 pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let client: reqwest::Client = build_client().unwrap();
@@ -38,8 +37,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let plain_site = get_plan_site(&sid, "").await?.unwrap();
     let groups = extract_groups(plain_site);
 
-    let mut tasks: std::vec::Vec<tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>> =
-        Vec::new(); // no tak czy nie xDD
+    let mut tasks: std::vec::Vec<Task> = Vec::new(); // no tak czy nie xDD
 
     for group in groups {
         let sido = sid.clone();
