@@ -4,7 +4,7 @@ use std::prelude::v1::Vec;
 use tokio::fs::File;
 use tokio::prelude::*;
 
-const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(1);
+const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(7);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
 const VMAX: usize = 22;
 const HMAX: usize = 49;
