@@ -1,0 +1,1 @@
+web: ./target/release/server_craweler_wat
