@@ -53,6 +53,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
 
             let mut file = File::create("groups/".to_owned() + &group[..]).await?;
             let mut vec_json: Vec<Krotka> = Vec::new();
+            
             for title in titles {
                 let krotka = Krotka::new(title.to_owned());
                 vec_json.push(krotka);
