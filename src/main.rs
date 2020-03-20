@@ -19,7 +19,7 @@ fn main() {
             (GET) (/) => {
                 let group = request.get_param("group").unwrap();
                 if !group.starts_with(".."){
-                    let plan_json = std::fs::read_to_string(&group[..]).unwrap();
+                    let plan_json = std::fs::read_to_string("groups/".to_owned()+&group[..]).unwrap();
                     return rouille::Response::json(&plan_json).with_additional_header("Access-Control-Allow-Origin","*")
                 }
                 rouille::Response::empty_404()

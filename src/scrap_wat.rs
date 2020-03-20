@@ -26,6 +26,7 @@ impl Krotka {
     }
 }
 type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
+
 #[tokio::main]
 pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let client: reqwest::Client = build_client().unwrap();
@@ -33,7 +34,10 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let sid = get_sid(&client, URL).await?;
     println!("sid:{}", sid);
 
-    login(&client, &sid, "michalkonopka", "Qwertqwert120").await?;
+    let userId =  std::env::var("USER").expect("UserId global var not set");
+    let password = std::env::var("PASSWORD").expect("Password global var not set");
+
+    login(&client, &sid, userId , password).await?;
     let plain_site = get_plan_site(&sid, "").await?.unwrap();
     let groups = extract_groups(plain_site);
 
@@ -53,7 +57,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
             let titles = trasnsponse(titles);
 
 
-            let mut file = File::create(&group[..]).await?;
+            let mut file = File::create("groups/".to_owned() + &group[..]).await?;
             let mut vec_json: Vec<Krotka> = Vec::new();
             for title in titles {
                 if hours == 7 {
@@ -81,7 +85,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
 
 async fn extract_tds_titles(html: String) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
-    let selector = Selector::parse(r#"td[class="tdFormList1DSheTeaGrpHTM3"]"#).unwrap();
+    let selector = Selector::parse(r#"td[class="tdFormList1NoIntExpDSheTeaGrpHTM3"]"#).unwrap();
     let html = Html::parse_fragment(&html[..]);
 
     for td in html.select(&selector) {
@@ -181,8 +185,8 @@ fn build_client() -> Result<reqwest::Client, reqwest::Error> {
 async fn login(
     client: &reqwest::Client,
     sid: &str,
-    user_id: &str,
-    password: &str,
+    user_id: String,
+    password: String,
 ) -> Result<reqwest::Response, reqwest::Error> {
     let form = &[
         ("formname", "login"),
