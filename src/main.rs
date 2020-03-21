@@ -18,6 +18,7 @@ fn main() {
         router!(request,
             (GET) (/) => {
                 let group = request.get_param("group").unwrap();
+                
                 if !group.starts_with(".") && !group.starts_with("/"){
                     let plan_json = std::fs::read_to_string("groups/".to_owned()+&group[..]).unwrap();
                     return rouille::Response::json(&plan_json).with_additional_header("Access-Control-Allow-Origin","*")

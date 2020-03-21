@@ -15,10 +15,8 @@ pub struct Krotka {
 }
 
 impl Krotka {
-    fn new(title:String) -> Krotka {
-        return Krotka {
-            title: title,
-        };
+    fn new(title: String) -> Krotka {
+        return Krotka { title: title };
     }
 }
 type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
@@ -34,7 +32,8 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let password = std::env::var("PASSWORD").expect("Password global var not set");
 
     login(&client, &sid, user_id, password).await?;
-    let plain_site = get_plan_site(&sid, "").await?.unwrap();
+
+    let plain_site = get_plan_site(&sid, "").await?;
     let groups = extract_groups(plain_site);
 
     let mut tasks: std::vec::Vec<Task> = Vec::new(); // no tak czy nie xDD
@@ -42,24 +41,24 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     for group in groups {
         let sido = sid.clone();
         std::thread::sleep(COOLDOWN);
+
         let task = tokio::spawn(async move {
             let plain_html = get_plan_site(&sido, &group)
                 .await
-                .expect("ERROR GET PLAN SITE")
-                .unwrap();
+                .expect("ERROR GET PLAN SITE");
 
             let titles = extract_tds_titles(plain_html).await;
             let titles = trasnsponse(titles);
 
             let mut file = File::create("groups/".to_owned() + &group[..]).await?;
             let mut vec_json: Vec<Krotka> = Vec::new();
-            
             for title in titles {
                 let krotka = Krotka::new(title.to_owned());
                 vec_json.push(krotka);
             }
-            file.write_all(serde_json::to_string(&vec_json).unwrap().as_bytes())
-                .await?;
+
+            let content = serde_json::to_string(&vec_json).unwrap();
+            file.write_all(content.as_bytes()).await?;
 
             Ok(())
         });
@@ -202,7 +201,7 @@ async fn login(
 }
 
 //https://s1.wcy.wat.edu.pl/ed1/logged_inc.php?mid=328&iid=20192&exv=WCY18KY2S1&pos=0&rdo=1&t=6801700&sid=
-async fn get_plan_site(sid: &String, group: &str) -> Result<Option<String>, reqwest::Error> {
+async fn get_plan_site(sid: &String, group: &str) -> Result<String, reqwest::Error> {
     let client = build_client().unwrap();
 
     let mut url: String = String::from(
@@ -216,5 +215,5 @@ async fn get_plan_site(sid: &String, group: &str) -> Result<Option<String>, reqw
     println!("{}", url);
 
     let post = client.post(&url[..]).send().await?.text().await?;
-    Ok(Some(post))
+    Ok(post)
 }
