@@ -4,24 +4,20 @@ use std::prelude::v1::Vec;
 use tokio::fs::File;
 use tokio::prelude::*;
 
-const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(1);
+const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(7);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
 const VMAX: usize = 22;
 const HMAX: usize = 49;
 
 #[derive(serde::Serialize)]
 pub struct Krotka {
-    date: usize,
-    hours: usize,
-    name: String,
+    title: String,
 }
 
 impl Krotka {
-    fn new(date: usize, hours: usize, name: String) -> Krotka {
+    fn new(title:String) -> Krotka {
         return Krotka {
-            date: date,
-            hours: hours,
-            name: name,
+            title: title,
         };
     }
 }
@@ -34,10 +30,10 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let sid = get_sid(&client, URL).await?;
     println!("sid:{}", sid);
 
-    let userId =  std::env::var("USER").expect("UserId global var not set");
+    let user_id = std::env::var("USER").expect("UserId global var not set");
     let password = std::env::var("PASSWORD").expect("Password global var not set");
 
-    login(&client, &sid, userId , password).await?;
+    login(&client, &sid, user_id, password).await?;
     let plain_site = get_plan_site(&sid, "").await?.unwrap();
     let groups = extract_groups(plain_site);
 
@@ -49,23 +45,17 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
         let task = tokio::spawn(async move {
             let plain_html = get_plan_site(&sido, &group)
                 .await
-                .expect("ERROR GET PLAN SITE");
+                .expect("ERROR GET PLAN SITE")
+                .unwrap();
 
-            let mut day_offset: usize = 0;
-            let mut hours: usize = 0;
-            let titles = extract_tds_titles(plain_html.unwrap()).await;
+            let titles = extract_tds_titles(plain_html).await;
             let titles = trasnsponse(titles);
-
 
             let mut file = File::create("groups/".to_owned() + &group[..]).await?;
             let mut vec_json: Vec<Krotka> = Vec::new();
+            
             for title in titles {
-                if hours == 7 {
-                    hours = 0;
-                    day_offset += 1;
-                }
-                hours += 1;
-                let krotka = Krotka::new(day_offset, hours, title.to_owned());
+                let krotka = Krotka::new(title.to_owned());
                 vec_json.push(krotka);
             }
             file.write_all(serde_json::to_string(&vec_json).unwrap().as_bytes())
@@ -85,7 +75,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
 
 async fn extract_tds_titles(html: String) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
-    let selector = Selector::parse(r#"td[class="tdFormList1NoIntExpDSheTeaGrpHTM3"]"#).unwrap();
+    let selector = Selector::parse(r#"td[class="tdFormList1DSheTeaGrpHTM3"]"#).unwrap();
     let html = Html::parse_fragment(&html[..]);
 
     for td in html.select(&selector) {
@@ -191,8 +181,8 @@ async fn login(
     let form = &[
         ("formname", "login"),
         ("default_fun", "1"),
-        ("userid", user_id),
-        ("password", password),
+        ("userid", &user_id[..]),
+        ("password", &password[..]),
         ("view_height", "1080"),
         ("view_width", "1920"),
     ];

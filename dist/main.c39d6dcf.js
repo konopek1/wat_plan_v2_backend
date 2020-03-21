@@ -117,7 +117,53 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   }
 
   return newRequire;
-})({"Table.ts":[function(require,module,exports) {
+})({"helper.ts":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.BASE_URL = "http://127.0.0.1:8888";
+exports.START_DATE = new Date(2020, 1, 24);
+
+function toDays(date) {
+  return Math.floor(date.valueOf() / 86400000);
+}
+
+function addDays(date, days) {
+  var result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function getDataOffset() {
+  var currDays = toDays(new Date());
+  var startDays = toDays(exports.START_DATE);
+  return Math.floor((currDays - startDays) / 7);
+}
+
+exports.getDataOffset = getDataOffset;
+
+function getCurrentWeeks(offset) {
+  var weekOffset = +offset;
+  console.log(weekOffset);
+  var startWeek = addDays(exports.START_DATE, weekOffset * 7);
+  var endWeek = addDays(exports.START_DATE, (weekOffset + 1) * 7);
+  return formatDateDDMM(startWeek) + " ~ " + formatDateDDMM(endWeek);
+}
+
+exports.getCurrentWeeks = getCurrentWeeks;
+
+function formatDateDDMM(date) {
+  var mm_dd = date.toISOString().split('T')[0].slice(5);
+
+  var _a = mm_dd.split('-'),
+      mm = _a[0],
+      dd = _a[1];
+
+  return dd + " " + mm;
+}
+},{}],"Table.ts":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -154,7 +200,7 @@ function () {
       var day = "";
 
       for (var j = 0; j < 7; j++) {
-        day += td(this.data[i + j].name);
+        day += td(this.data[i + j].title);
       }
 
       content += tr(td(DAYS[n_day]) + day);
@@ -173,7 +219,7 @@ function () {
 }();
 
 exports.default = Table;
-},{"./helper":"helper.ts"}],"helper.ts":[function(require,module,exports) {
+},{"./helper":"helper.ts"}],"Input.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -185,90 +231,10 @@ var __importDefault = this && this.__importDefault || function (mod) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var helper_1 = require("./helper");
 
 var Table_1 = __importDefault(require("./Table"));
-
-exports.BASE_URL = "https://wat-plan-backend.herokuapp.com/group";
-exports.START_DATE = new Date(2020, 1, 24);
-
-function toDays(date) {
-  return Math.floor(date.valueOf() / 86400000);
-}
-
-function addDays(date, days) {
-  var result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function getDataOffset() {
-  var currDays = toDays(new Date());
-  var startDays = toDays(exports.START_DATE);
-  return Math.floor((currDays - startDays) / 7);
-}
-
-exports.getDataOffset = getDataOffset;
-
-function getCurrentWeeks(offset) {
-  var weekOffset = getDataOffset() + offset;
-  var startWeek = addDays(new Date(), weekOffset * 7);
-  var endWeek = addDays(new Date(), (weekOffset + 1) * 7);
-  return startWeek.toISOString().split('T')[0].slice(5) + " ~ " + endWeek.toISOString().split('T')[0].slice(5);
-}
-
-exports.getCurrentWeeks = getCurrentWeeks;
-
-function start(group, numberOfWeeks) {
-  if (numberOfWeeks === void 0) {
-    numberOfWeeks = 10;
-  }
-
-  var data = fetchData(group);
-  var offsetNumberOfWeeks = getDataOffset();
-  console.log(offsetNumberOfWeeks);
-
-  for (var i = offsetNumberOfWeeks; i < numberOfWeeks + offsetNumberOfWeeks; i++) {
-    var div = document.createElement('div');
-    div.id = 'container' + i.toString();
-    document.body.appendChild(div);
-    var weekData = data.slice(i * 49, (i + 1) * 49);
-    var table = new Table_1.default(weekData, 'container' + i, i);
-    table.inject();
-  }
-}
-
-exports.default = start;
-
-function fetchData(group) {
-  var req = new XMLHttpRequest();
-  var data;
-  req.open('GET', exports.BASE_URL + "?group=" + group, false);
-
-  req.onreadystatechange = function (aEvt) {
-    if (req.readyState == 4) {
-      if (req.status == 200) data = JSON.parse(JSON.parse(req.response));
-    }
-  };
-
-  req.send(null);
-  return data;
-}
-
-exports.fetchData = fetchData;
-},{"./Table":"Table.ts"}],"Input.ts":[function(require,module,exports) {
-"use strict";
-
-var __importDefault = this && this.__importDefault || function (mod) {
-  return mod && mod.__esModule ? mod : {
-    "default": mod
-  };
-};
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var helper_1 = __importDefault(require("./helper"));
 
 var Input =
 /** @class */
@@ -278,16 +244,70 @@ function () {
     this.placeholder = placeholder;
     insert_id ? this.insert_id = insert_id : null;
     onkeydown ? this.onKeyDown = onkeydown : null;
+    this.inject();
+    var cacheGroup = this.getCachedGroup();
+    if (cacheGroup) this.start(cacheGroup);
   }
 
   Input.prototype.render = function () {
-    return "<div class=\"form__group field\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        </div>";
+    return "<div class=\"form__group field\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        </div><div id='error-" + this.id + "'></div>";
+  };
+
+  Input.prototype.fetchData = function (group) {
+    group = group.toUpperCase();
+    var req = new XMLHttpRequest();
+    var data;
+    req.open('GET', helper_1.BASE_URL + "/?group=" + group, false);
+    var tables_container = document.querySelector('#tables_container');
+    var errorElement = this.errorElement;
+    tables_container.style.display = 'none';
+
+    req.onreadystatechange = function (aEvt) {
+      if (req.readyState == 4) {
+        if (req.status == 200) {
+          data = JSON.parse(JSON.parse(req.response));
+          errorElement.innerHTML = '';
+        } else {
+          errorElement.innerHTML = 'Nie ma takiej grupy :/';
+        }
+
+        tables_container.style.display = '';
+      }
+    };
+
+    req.send(null);
+    localStorage.setItem('group', group);
+    return data;
+  };
+
+  Input.prototype.start = function (group, numberOfWeeks) {
+    if (numberOfWeeks === void 0) {
+      numberOfWeeks = 10;
+    }
+
+    var data = this.fetchData(group);
+    var offsetNumberOfWeeks = helper_1.getDataOffset();
+    var tablesContainer = document.querySelector('#tables_container');
+
+    for (var i = offsetNumberOfWeeks; i < numberOfWeeks + offsetNumberOfWeeks; i++) {
+      var div = document.createElement('div');
+      div.id = 'container' + i.toString();
+      tablesContainer.appendChild(div);
+      var weekData = data.slice(i * 49, (i + 1) * 49);
+      var table = new Table_1.default(weekData, 'container' + i, i);
+      table.inject();
+    }
+  };
+
+  Input.prototype.getCachedGroup = function () {
+    var group = localStorage.getItem('group');
+    return !!group ? group : null;
   };
 
   Input.prototype.onKeyDown = function (e) {
     switch (e.which) {
       case 13:
-        helper_1.default(this.getValue());
+        this.start(this.getValue());
         break;
 
       default:
@@ -304,13 +324,14 @@ function () {
     outerElement.innerHTML = this.render();
     this.element = outerElement.querySelector("#" + this.id);
     this.element.onkeydown = this.onKeyDown.bind(this);
+    this.errorElement = outerElement.querySelector("#error-" + this.id);
   };
 
   return Input;
 }();
 
 exports.default = Input;
-},{"./helper":"helper.ts"}],"main.ts":[function(require,module,exports) {
+},{"./helper":"helper.ts","./Table":"Table.ts"}],"main.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -326,7 +347,6 @@ Object.defineProperty(exports, "__esModule", {
 var Input_1 = __importDefault(require("./Input"));
 
 var input = new Input_1.default('input_1', 'Grupa', 'search_bar');
-input.inject();
 },{"./Input":"Input.ts"}],"../../../../../../../usr/local/lib/node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
@@ -355,7 +375,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "43125" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "44475" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
