@@ -3,11 +3,14 @@ use scraper::{Html, Selector};
 use std::prelude::v1::Vec;
 use tokio::fs::File;
 use tokio::prelude::*;
-
+use std::path::Path;
+use std::result::Result;
 const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(7);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
 const VMAX: usize = 22;
 const HMAX: usize = 49;
+const GROUP_FOLDER: &str = "./group";
+const MAX_AGE: std::time::Duration = std::time::Duration::from_secs(60*30);
 
 #[derive(serde::Serialize)]
 pub struct Krotka {
@@ -24,22 +27,22 @@ impl Krotka {
 pub struct Fetcher {
     sid:String,
     login:String,
-    pass:String,
-    client:reqwest::Client
+    pass:String
 }
 impl Fetcher {
-    //co zrobic jak rust sie sapie xd
-    /*async fn new(log:String,ps:String)->Fetcher{
+    async fn new(log:String,ps:String)->Fetcher{
         let client_tmp: reqwest::Client = build_client().unwrap();
-        let sid_tmp:String= get_sid(&client_tmp,URL).await?;
+        let sid_tmp = match get_sid(&client_tmp,URL).await{
+            Ok(s) => s,
+            Err(e) => panic!("Blad w uzyskiwaniu sid\n")
+        };
         return Fetcher{
-            client:client_tmp,
             sid:sid_tmp,
             login:log,
             pass:ps
         };
-    }*/
-    async fn fetch_group(group:String){
+    }
+    async fn get_group(&mut self,group:String)->Option<String>{
         //TODO zrobic to co w pseudokodzie
         /*
         if(nie istnieje plik grupy || zmodyfikowano dawniej niż X godzin)
@@ -53,10 +56,56 @@ impl Fetcher {
         pobierz dane z pliku
         wyslij odpowiedz
         */
-
+        let path = Path::new(GROUP_FOLDER).join(&group);
+       //let mut file = std::fs::File::open(path.join(&group));
+        if !path.is_file()  {
+            let r = self.fetch_group(&group).await;
+            if r.is_err(){
+                return None;
+            }
+        }
+        let age = std::fs::metadata(&path).unwrap().modified().unwrap().elapsed().unwrap();
+        if  age > MAX_AGE {
+            let r = self.fetch_group(&group).await;
+            if r.is_err(){
+                return None;
+            }
+        }
+        let ret = std::fs::read_to_string(path).unwrap();
+        return Some(ret);
     }
     fn cache(filename:String,grstr:String){
 
+    }
+    async fn fetch_group(&mut self,group:&String) -> Result<(),std::io::Error>{
+        let path = Path::new(GROUP_FOLDER);
+        let plain_html = match get_plan_site(&self.sid, &group).await{
+            Ok(h) => h,
+            Err(e) => {
+                self.update_sid().await;
+                let html = get_plan_site(&self.sid,&group).await?;
+                html
+            }
+        };
+        let titles = extract_tds_titles(plain_html).await;
+        let titles = trasnsponse(titles);
+        let mut file = File::create(path.join(group)).await.expect("Cannot write to file in GROUP_FOLDER");
+        let mut vec_json: Vec<Krotka> = Vec::new();
+
+        for title in titles {
+            let krotka = Krotka::new(title.to_owned());
+            vec_json.push(krotka);
+        }
+        file.write_all(serde_json::to_string(&vec_json).unwrap().as_bytes())
+            .await?;
+
+        Ok(())
+    }
+    async fn update_sid(&mut self)
+    {
+        let client_tmp: reqwest::Client = build_client().unwrap();
+        self.sid = get_sid(&client_tmp,URL).await.unwrap();
+        let r = login(&client_tmp,&self.sid,self.login.clone(),self.pass.clone()).await.expect("blad logowania");
     }
 }
 type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
@@ -72,7 +121,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let password = std::env::var("PASSWORD").expect("Password global var not set");
 
     login(&client, &sid, user_id, password).await?;
-    let plain_site = get_plan_site(&sid, "").await?.unwrap();
+    let plain_site = get_plan_site(&sid, "").await.unwrap();
     let groups = extract_groups(plain_site);
 
     let mut tasks: std::vec::Vec<Task> = Vec::new(); // no tak czy nie xDD
@@ -83,8 +132,7 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
         let task = tokio::spawn(async move {
             let plain_html = get_plan_site(&sido, &group)
                 .await
-                .expect("ERROR GET PLAN SITE")
-                .unwrap();
+                .expect("ERROR GET PLAN SITE");
 
             let titles = extract_tds_titles(plain_html).await;
             let titles = trasnsponse(titles);
@@ -239,7 +287,7 @@ async fn login(
 }
 
 //https://s1.wcy.wat.edu.pl/ed1/logged_inc.php?mid=328&iid=20192&exv=WCY18KY2S1&pos=0&rdo=1&t=6801700&sid=
-async fn get_plan_site(sid: &String, group: &str) -> Result<Option<String>, reqwest::Error> {
+async fn get_plan_site(sid: &String, group: &str) -> Result<String, std::io::Error> {
     let client = build_client().unwrap();
 
     let mut url: String = String::from(
@@ -251,7 +299,15 @@ async fn get_plan_site(sid: &String, group: &str) -> Result<Option<String>, reqw
     url.push_str(&group_base[..]);
 
     println!("{}", url);
-
-    let post = client.post(&url[..]).send().await?.text().await?;
-    Ok(Some(post))
+    let response = match client.post(&url[..]).send().await{
+        Ok(k) => k,
+        Err(e) => return Err(io::Error::new(std::io::ErrorKind::Other,"jebany rust godzina poszla na to"))
+    };
+    if response.url().as_str().len() < 30
+    {
+        //to znaczy ze sid sie wyczerpał i wylądowaliśmy na https://wcy.wat.edu.pl
+        return Err(io::Error::new(std::io::ErrorKind::Other,"sid sie skonczyl"));
+    }
+    let post = response.text().await.expect("blad w odczycie htmla");
+    Ok(post)
 }
