@@ -21,6 +21,44 @@ impl Krotka {
         };
     }
 }
+pub struct Fetcher {
+    sid:String,
+    login:String,
+    pass:String,
+    client:reqwest::Client
+}
+impl Fetcher {
+    //co zrobic jak rust sie sapie xd
+    /*async fn new(log:String,ps:String)->Fetcher{
+        let client_tmp: reqwest::Client = build_client().unwrap();
+        let sid_tmp:String= get_sid(&client_tmp,URL).await?;
+        return Fetcher{
+            client:client_tmp,
+            sid:sid_tmp,
+            login:log,
+            pass:ps
+        };
+    }*/
+    async fn fetch_group(group:String){
+        //TODO zrobic to co w pseudokodzie
+        /*
+        if(nie istnieje plik grupy || zmodyfikowano dawniej niż X godzin)
+            pobierz ze strony
+            if(fail)
+                update sid
+                pobierz ze strony
+                if(fail)
+                    zjebało sie na ament
+        
+        pobierz dane z pliku
+        wyslij odpowiedz
+        */
+
+    }
+    fn cache(filename:String,grstr:String){
+
+    }
+}
 type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
 
 #[tokio::main]
@@ -72,7 +110,6 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
 
     Ok(())
 }
-
 async fn extract_tds_titles(html: String) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     let selector = Selector::parse(r#"td[class="tdFormList1DSheTeaGrpHTM3"]"#).unwrap();
