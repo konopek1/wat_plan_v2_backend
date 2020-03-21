@@ -123,7 +123,7 @@ parcelRequire = (function (modules, cache, entry, globalName) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.BASE_URL = "https://wat-plan-backend.herokuapp.com";
+exports.BASE_URL = "http://127.0.0.1:8888";
 exports.START_DATE = new Date(2020, 1, 24);
 
 function toDays(date) {
@@ -244,12 +244,13 @@ function () {
     this.placeholder = placeholder;
     insert_id ? this.insert_id = insert_id : null;
     onkeydown ? this.onKeyDown = onkeydown : null;
+    this.inject();
     var cacheGroup = this.getCachedGroup();
     if (cacheGroup) this.start(cacheGroup);
   }
 
   Input.prototype.render = function () {
-    return "<div class=\"form__group field\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        </div><div id='error'></div>";
+    return "<div class=\"form__group field\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        </div><div id='error-" + this.id + "'></div>";
   };
 
   Input.prototype.fetchData = function (group) {
@@ -258,15 +259,16 @@ function () {
     var data;
     req.open('GET', helper_1.BASE_URL + "/?group=" + group, false);
     var tables_container = document.querySelector('#tables_container');
+    var errorElement = this.errorElement;
     tables_container.style.display = 'none';
 
     req.onreadystatechange = function (aEvt) {
       if (req.readyState == 4) {
         if (req.status == 200) {
           data = JSON.parse(JSON.parse(req.response));
-          document.querySelector('#error').innerHTML = '';
+          errorElement.innerHTML = '';
         } else {
-          document.querySelector('#error').innerHTML = 'Nie ma takiej grupy :/';
+          errorElement.innerHTML = 'Nie ma takiej grupy :/';
         }
 
         tables_container.style.display = '';
@@ -322,6 +324,7 @@ function () {
     outerElement.innerHTML = this.render();
     this.element = outerElement.querySelector("#" + this.id);
     this.element.onkeydown = this.onKeyDown.bind(this);
+    this.errorElement = outerElement.querySelector("#error-" + this.id);
   };
 
   return Input;
@@ -344,7 +347,6 @@ Object.defineProperty(exports, "__esModule", {
 var Input_1 = __importDefault(require("./Input"));
 
 var input = new Input_1.default('input_1', 'Grupa', 'search_bar');
-input.inject();
 },{"./Input":"Input.ts"}],"../../../../../../../usr/local/lib/node_modules/parcel/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
@@ -373,7 +375,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "38949" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "44475" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

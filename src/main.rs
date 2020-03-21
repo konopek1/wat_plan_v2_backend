@@ -22,7 +22,7 @@ fn main() {
                     let plan_json = std::fs::read_to_string("groups/".to_owned()+&group[..]).unwrap();
                     return rouille::Response::json(&plan_json).with_additional_header("Access-Control-Allow-Origin","*")
                 }
-                rouille::Response::empty_404()
+                rouille::Response::empty_404().with_additional_header("Access-Control-Allow-Origin","*")
             },
 
             _ => {
@@ -31,7 +31,7 @@ fn main() {
                 if response.is_success() {
                     return response;
                 }
-                rouille::Response::empty_404()
+                rouille::Response::empty_404().with_additional_header("Access-Control-Allow-Origin","*")
             }
         )
     });
