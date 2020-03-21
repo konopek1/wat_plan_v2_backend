@@ -30,7 +30,8 @@ pub struct Fetcher {
     pass:String
 }
 impl Fetcher {
-    async fn new(log:String,ps:String)->Fetcher{
+    pub async fn new(log:String,ps:String)->Fetcher{
+        println!("Creating Fetcher object.");
         let client_tmp: reqwest::Client = build_client().unwrap();
         let sid_tmp = match get_sid(&client_tmp,URL).await{
             Ok(s) => s,
@@ -42,7 +43,7 @@ impl Fetcher {
             pass:ps
         };
     }
-    async fn get_group(&mut self,group:String)->Option<String>{
+    pub async fn get_group(&mut self,group:String)->Option<String>{
         //TODO zrobic to co w pseudokodzie
         /*
         if(nie istnieje plik grupy || zmodyfikowano dawniej niż X godzin)
@@ -57,8 +58,10 @@ impl Fetcher {
         wyslij odpowiedz
         */
         let path = Path::new(GROUP_FOLDER).join(&group);
+        println!("Requested file {}",path.to_str().unwrap_or("BAD_PATH"));
        //let mut file = std::fs::File::open(path.join(&group));
         if !path.is_file()  {
+            println!("File not found.");
             let r = self.fetch_group(&group).await;
             if r.is_err(){
                 return None;
@@ -74,14 +77,13 @@ impl Fetcher {
         let ret = std::fs::read_to_string(path).unwrap();
         return Some(ret);
     }
-    fn cache(filename:String,grstr:String){
-
-    }
     async fn fetch_group(&mut self,group:&String) -> Result<(),std::io::Error>{
+        println!("Fetching group {} from server.",group);
         let path = Path::new(GROUP_FOLDER);
         let plain_html = match get_plan_site(&self.sid, &group).await{
             Ok(h) => h,
             Err(e) => {
+                println!("SID expired.");
                 self.update_sid().await;
                 let html = get_plan_site(&self.sid,&group).await?;
                 html
@@ -103,6 +105,7 @@ impl Fetcher {
     }
     async fn update_sid(&mut self)
     {
+        println!("Getting new sid.");
         let client_tmp: reqwest::Client = build_client().unwrap();
         self.sid = get_sid(&client_tmp,URL).await.unwrap();
         let r = login(&client_tmp,&self.sid,self.login.clone(),self.pass.clone()).await.expect("blad logowania");
@@ -110,7 +113,7 @@ impl Fetcher {
 }
 type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
 
-#[tokio::main]
+
 pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let client: reqwest::Client = build_client().unwrap();
 
