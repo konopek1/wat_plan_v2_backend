@@ -8,6 +8,7 @@ use std::thread;
 
 const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(7);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
+const FOLDER_GROUP: &str = "groups/";
 const VMAX: usize = 22;
 const HMAX: usize = 49;
 
@@ -48,7 +49,8 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
         let task = tokio::spawn(async move {
 
             let content = process_request(&sido,&group).await;
-            save_to_file_json(&content,&group).await;     
+            let file_name = FOLDER_GROUP.to_owned() + &group[..];
+            save_to_file_json(&content,&file_name).await;     
 
             Ok(())
         });
