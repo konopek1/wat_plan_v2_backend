@@ -3,11 +3,14 @@ use scraper::{Html, Selector};
 use std::prelude::v1::Vec;
 use tokio::fs::File;
 use tokio::prelude::*;
+use std::result::Result;
+use std::thread;
 
 const COOLDOWN: std::time::Duration = std::time::Duration::from_secs(7);
 const URL: &str = "https://s1.wcy.wat.edu.pl/ed1/";
 const VMAX: usize = 22;
 const HMAX: usize = 49;
+
 
 #[derive(serde::Serialize)]
 pub struct Krotka {
@@ -19,7 +22,7 @@ impl Krotka {
         return Krotka { title: title };
     }
 }
-type Task = tokio::task::JoinHandle<std::result::Result<(), std::io::Error>>;
+type Task = tokio::task::JoinHandle<Result<(), std::io::Error>>;
 
 #[tokio::main]
 pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
@@ -28,48 +31,58 @@ pub async fn fetch_parse_plan() -> Result<(), reqwest::Error> {
     let sid = get_sid(&client, URL).await?;
     println!("sid:{}", sid);
 
-    let user_id = std::env::var("USER").expect("UserId global var not set");
-    let password = std::env::var("PASSWORD").expect("Password global var not set");
+    let user_id = std::env::var("USER").expect("ERROR: UserId global var not set");
+    let password = std::env::var("PASSWORD").expect("ERROR: Password global var not set");
 
     login(&client, &sid, user_id, password).await?;
 
-    let plain_site = get_plan_site(&sid, "").await?;
-    let groups = extract_groups(plain_site);
+    let groups = extract_groups(&sid).await;
 
-    let mut tasks: std::vec::Vec<Task> = Vec::new(); // no tak czy nie xDD
+    let mut tasks: Vec<Task> = Vec::new();
 
     for group in groups {
         let sido = sid.clone();
-        std::thread::sleep(COOLDOWN);
+        thread::sleep(COOLDOWN);
 
         let task = tokio::spawn(async move {
-            let plain_html = get_plan_site(&sido, &group)
-                .await
-                .expect("ERROR GET PLAN SITE");
 
-            let titles = extract_tds_titles(plain_html).await;
-            let titles = trasnsponse(titles);
-
-            let mut file = File::create("groups/".to_owned() + &group[..]).await?;
-            let mut vec_json: Vec<Krotka> = Vec::new();
-            for title in titles {
-                let krotka = Krotka::new(title.to_owned());
-                vec_json.push(krotka);
-            }
-
-            let content = serde_json::to_string(&vec_json).unwrap();
-            file.write_all(content.as_bytes()).await?;
+            let content = process_request(&sido,&group).await;
+            save_to_file_json(&content,&group).await;     
 
             Ok(())
         });
+
         tasks.push(task);
     }
 
     for task in tasks {
-        let _ = task.await.expect("Join task error");
+        let _ = task.await.expect("ERROR: Couldnt join task error");
     }
 
     Ok(())
+}
+
+async fn process_request(sido: &String, group: &String) -> Vec<Krotka> {
+    let plain_html = get_plan_site(&sido, &group)
+        .await
+        .expect("ERROR: Couldnt get plan site");
+
+    let titles = extract_tds_titles(plain_html).await;
+
+    let mut formated_plan: Vec<Krotka> = Vec::new();
+
+    for title in titles {
+        let krotka = Krotka::new(title.to_owned());
+        formated_plan.push(krotka);
+    }
+    formated_plan
+}
+
+async fn save_to_file_json(content:&Vec<Krotka>,file_name:&str) {
+    println!("{}",file_name);
+    let mut file = File::create(file_name).await.expect("ERROR: Couldnt create file.");
+    let content = serde_json::to_string(content).unwrap();
+    file.write_all(content.as_bytes()).await.expect("ERROR: Couldnt save to file.");
 }
 
 async fn extract_tds_titles(html: String) -> Vec<String> {
@@ -81,10 +94,12 @@ async fn extract_tds_titles(html: String) -> Vec<String> {
         let td_title = td.value().attr("title").unwrap_or(" ");
         result.push(td_title.to_owned());
     }
-    result
+    trasnsponse(result)
 }
 
-fn extract_groups(html: String) -> Vec<String> {
+async fn extract_groups(sid:&String) -> Vec<String> {
+    let html = get_plan_site(sid, "").await.expect("ERROR: Couldnt get groups site.");
+
     let mut result: Vec<String> = Vec::new();
     let selector = Selector::parse(r#"a[class=aMenu]"#).unwrap();
     let html = Html::parse_fragment(&html[..]);
@@ -132,7 +147,7 @@ async fn get_sid(client: &reqwest::Client, url: &str) -> Result<String, reqwest:
         .unwrap();
 
     if result == "" {
-        panic!("Brak sidu!!");
+        panic!("ERROR: sid has expired");
     }
 
     let result: Vec<&str> = result.split('=').collect();
@@ -200,7 +215,6 @@ async fn login(
     Ok(post)
 }
 
-//https://s1.wcy.wat.edu.pl/ed1/logged_inc.php?mid=328&iid=20192&exv=WCY18KY2S1&pos=0&rdo=1&t=6801700&sid=
 async fn get_plan_site(sid: &String, group: &str) -> Result<String, reqwest::Error> {
     let client = build_client().unwrap();
 
