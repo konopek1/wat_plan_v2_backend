@@ -12,14 +12,15 @@ const VMAX: usize = 22;
 const HMAX: usize = 49;
 
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize,Clone)]
 pub struct Krotka {
     title: String,
+    class: String
 }
 
 impl Krotka {
-    fn new(title: String) -> Krotka {
-        return Krotka { title: title };
+    fn new(title: String,class: String) -> Krotka {
+        return Krotka { title,class };
     }
 }
 type Task = tokio::task::JoinHandle<Result<(), std::io::Error>>;
@@ -67,32 +68,31 @@ async fn process_request(sido: &String, group: &String) -> Vec<Krotka> {
         .await
         .expect("ERROR: Couldnt get plan site");
 
-    let titles = extract_tds_titles(plain_html).await;
+    let krotkas = extract_krotkas(plain_html).await;
 
-    let mut formated_plan: Vec<Krotka> = Vec::new();
-
-    for title in titles {
-        let krotka = Krotka::new(title.to_owned());
-        formated_plan.push(krotka);
-    }
-    formated_plan
+    krotkas
 }
 
 async fn save_to_file_json(content:&Vec<Krotka>,file_name:&str) {
-    println!("{}",file_name);
+    println!("Saved to file: {}",file_name);
     let mut file = File::create(file_name).await.expect("ERROR: Couldnt create file.");
     let content = serde_json::to_string(content).unwrap();
     file.write_all(content.as_bytes()).await.expect("ERROR: Couldnt save to file.");
 }
 
-async fn extract_tds_titles(html: String) -> Vec<String> {
-    let mut result: Vec<String> = Vec::new();
+//w 4 kolumnie text znajduje się sala
+async fn extract_krotkas(html: String) -> Vec<Krotka> {
+    let mut result: Vec<Krotka> = Vec::new();
     let selector = Selector::parse(r#"td[class="tdFormList1DSheTeaGrpHTM3"]"#).unwrap();
     let html = Html::parse_fragment(&html[..]);
 
     for td in html.select(&selector) {
-        let td_title = td.value().attr("title").unwrap_or(" ");
-        result.push(td_title.to_owned());
+        let td_title = td.value().attr("title").unwrap_or("").to_owned();
+        let text = td.text().collect::<Vec<_>>();
+        let class =text.get(4).unwrap_or(&"").to_owned().to_owned();
+
+        let krotka = Krotka::new(td_title,class);
+        result.push(krotka);
     }
     trasnsponse(result)
 }
@@ -111,16 +111,16 @@ async fn extract_groups(sid:&String) -> Vec<String> {
     result
 }
 
-fn trasnsponse(matrix: Vec<String>) -> Vec<String> {
+fn trasnsponse<T:Clone>(matrix: Vec<T>) -> Vec<T> {
     if matrix.len() == 0 {
         return matrix;
     }
-    let mut new_matrix: Vec<String> = Vec::new();
+    let mut new_matrix: Vec<T> = Vec::new();
     let mut i: usize = 0;
     let mut offset: usize = 0;
 
     loop {
-        new_matrix.push(matrix[i].to_owned());
+        new_matrix.push(matrix[i].clone());
         i += VMAX;
         if i >= VMAX * HMAX {
             offset += 1;
