@@ -146,7 +146,7 @@ async fn get_sid(client: &reqwest::Client, url: &str) -> Result<String, reqwest:
         .unwrap()
         .value()
         .attr("action")
-        .unwrap();
+        .expect("ERROR: Couldnt parse sid");
 
     if result == "" {
         panic!("ERROR: sid has expired");

@@ -4,6 +4,7 @@ use std::time::Duration;
 mod scrap_wat;
 
 static INTERVAL: u64 = 8; // co ile godzin odswizane
+// jesli projekt bedzie sie roziwal przebudowa totalna
 
 #[allow(unreachable_code)]
 fn main() {
@@ -32,7 +33,7 @@ fn main() {
                 if response.is_success() {
                     return response;
                 }
-                rouille::Response::empty_404().with_additional_header("Access-Control-Allow-Origin","*")
+                rouille::Response::redirect_303("/index.html")
             }
         )
     });
