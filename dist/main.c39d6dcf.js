@@ -293,7 +293,7 @@ function () {
   }
 
   Input.prototype.render = function () {
-    return "<div class=\"form__group field\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        </div><div id='error-" + this.id + "'></div>";
+    return "<div class=\"form__group field\">\n        <input type=\"input\" list=\"" + (this.id + "datalist") + "\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        <datalist id=\"" + (this.id + "datalist") + "\">\n        <option>gowno</option>\n        </datalist>\n        </div><div id='error-" + this.id + "'></div>";
   };
 
   Input.prototype.fetchData = function (group) {
@@ -420,7 +420,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "42903" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "38885" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

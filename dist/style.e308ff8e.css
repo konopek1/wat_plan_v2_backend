@@ -126,7 +126,12 @@ h2 a {
     transition-property: all;
     transition-timing-function: line;
 }
+/*	
+	End of the <Table> Responsive
+	===================
+	Author: @PableraShow
 
+*/
 .date {
     color: #25C585;
 }
@@ -134,9 +139,10 @@ h2 a {
 /* //dropdown sciagniety tez of cours NIE MNOZ ZBEDNYCH BYTOW !! ~ brzytwa okahamy 2137rok p.n.e */
 
 .form__group {
-    width: 50%;
+    position: relative;
     padding: 15px 0 0;
     margin-top: 10px;
+    width: 50%;
 }
 
 .form__field {
@@ -257,6 +263,11 @@ h2 a {
     }
 }
 
+option{
+    background: #A7A1AE !important;
+    color: white !important;
+}
+
 #error-input_1 {
     color: red;
     text-align: center;
@@ -268,7 +279,7 @@ h2 a {
 
 #search_bar{
     display: flex;
-    margin-bottom: 5%;
+    margin-bottom: 2%;
     justify-content: center;
 }
 /* data-picker  */
