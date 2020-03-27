@@ -293,7 +293,7 @@ function () {
   }
 
   Input.prototype.render = function () {
-    return "<div class=\"form__group field\">\n        <input type=\"input\" list=\"" + (this.id + "datalist") + "\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        <datalist id=\"" + (this.id + "datalist") + "\">\n        <option>gowno</option>\n        </datalist>\n        </div><div id='error-" + this.id + "'></div>";
+    return "<div class=\"form__group field\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"" + this.placeholder + "\" value=\"\" name=\"" + this.placeholder + "\" id='" + this.id + "' required />\n        <label for=\"" + this.placeholder + "\" class=\"form__label\">" + this.placeholder + "</label>\n        <div id=\"filters\"><div class=\"form__group field w-100\">\n        <input type=\"input\" class=\"form__field\" placeholder=\"Filtruj plan\" value=\"\" name=\"filter_plan\" id='filter_plan' required />\n        <label for=\"filter_plan\" class=\"form__label\">Filtruj plan</label></div>\n        </div><div id='error-" + this.id + "'></div>";
   };
 
   Input.prototype.fetchData = function (group) {
@@ -334,6 +334,7 @@ function () {
     document.querySelector('#tables_container').innerHTML = "";
     document.querySelector('#data_picker').innerHTML = "";
     var data = this.fetchData(group);
+    this.data = data;
     var offsetNumberOfWeeks = helper_1.getDataOffset();
 
     for (var i = offsetNumberOfWeeks; i < numberOfWeeks + offsetNumberOfWeeks; i++) {
@@ -360,6 +361,34 @@ function () {
     }
   };
 
+  Input.prototype.filterProccess = function (e, numberOfWeeks) {
+    var _this = this;
+
+    if (numberOfWeeks === void 0) {
+      numberOfWeeks = 7;
+    }
+
+    document.querySelector('#tables_container').innerHTML = "";
+    document.querySelector('#data_picker').innerHTML = "";
+    var offsetNumberOfWeeks = helper_1.getDataOffset();
+    console.log(this, this.filterInput.value);
+    var data = this.data.map(function (k) {
+      if (k.title.toLocaleLowerCase().includes(_this.filterInput.value.toLocaleLowerCase())) return k;
+      if (k.class.toLocaleLowerCase().includes(_this.filterInput.value.toLocaleLowerCase())) return k;
+      return {
+        title: "",
+        class: ""
+      };
+    });
+
+    for (var i = offsetNumberOfWeeks; i < numberOfWeeks + offsetNumberOfWeeks; i++) {
+      var weekData = data.slice(i * 49, (i + 1) * 49);
+      var table = new Table_1.default(weekData, 'tables_container', i);
+      var date = helper_1.getCurrentWeeks(i);
+      new DatePiceker_1.default(date, 'data_picker', table);
+    }
+  };
+
   Input.prototype.getValue = function () {
     return this.element.value;
   };
@@ -369,6 +398,8 @@ function () {
     outerElement.innerHTML = this.render();
     this.element = outerElement.querySelector("#" + this.id);
     this.element.onkeydown = this.onKeyDown.bind(this);
+    this.filterInput = outerElement.querySelector("#filter_plan");
+    this.filterInput.onkeyup = this.filterProccess.bind(this);
     this.errorElement = outerElement.querySelector("#error-" + this.id);
   };
 
@@ -420,7 +451,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "38885" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "41787" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
