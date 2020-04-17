@@ -17,3 +17,12 @@ pub fn get_bucket() -> Result<Bucket,S3Error> {
 
     Bucket::new(BUCKET_NAME,region,credentials)
 }
+
+pub async fn get_bucket_async() -> Result<Bucket,S3Error> {
+    let access_key: String = std::env::var("AWSAccessKeyId").expect("AWSAccessKeyId not set");
+    let secret_key: String = std::env::var("AWSSecretKey").expect("AWSSecretKey not set");
+    let credentials = Credentials::new(Some(access_key), Some(secret_key), None, None).await.unwrap();
+    let region: Region = REGION.parse().unwrap();
+
+    Bucket::new(BUCKET_NAME,region,credentials)
+}
