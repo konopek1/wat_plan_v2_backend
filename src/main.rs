@@ -4,7 +4,7 @@ use std::time::Duration;
 mod scrap_wat;
 mod s3_driver;
 
-static INTERVAL: u64 = 8; // co ile godzin odswizane
+static INTERVAL: u8 = 24; // co ile godzin odswizane
 
 #[allow(unreachable_code)]
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
             (GET) (/) => {
                 let group = request.get_param("group");
                 let bucket = s3_driver::get_bucket().expect("Couldnt get bucket from S3");
-                
+
                 match group {
                     Some(group) => {
                         if !group.starts_with(".") && !group.starts_with("/"){
