@@ -57,7 +57,7 @@ pub async fn fetch_parse_plan() -> Result<(), GenericError> {
 
         let task = tokio::spawn(async move {
             let content = process_request(&sido, &group).await;
-            let bucket: Bucket = s3_driver::get_bucket().unwrap();
+            let bucket: Bucket = s3_driver::get_bucket_async().await.unwrap();
             let file_name = FOLDER_GROUP.to_owned() + &group[..];
 
             save_to_s3(&content,&file_name,&bucket).await;
